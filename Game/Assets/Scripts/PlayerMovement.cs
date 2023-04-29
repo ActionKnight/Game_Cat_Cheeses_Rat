@@ -27,7 +27,7 @@ public class PlayerMovement : MonoBehaviour
 
     public _PlayerMovement movementScript;
 
-    private void Start()
+    private void OnEnable()
     {
         if (instance == null) { instance = this; }
         Spawn();
