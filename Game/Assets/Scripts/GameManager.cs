@@ -103,6 +103,7 @@ public class GameManager : MonoBehaviour
     IEnumerator OnDeathReturn()
     {
         yield return new WaitForSeconds(2.5f);
+        LivesLeft = 3;
         SceneManager.LoadScene(1);
     }
 
