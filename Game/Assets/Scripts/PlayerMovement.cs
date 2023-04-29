@@ -14,20 +14,23 @@ public class PlayerMovement : MonoBehaviour
 
     public Animator animator;
     public AudioClip Walking_Sound, Running_Sound, Jump_Sound;
-    public AudioSource MouseAudio,JumpSource;
+    public AudioSource MouseAudio, JumpSource;
 
     public Transform groundCheck;
     public float groundDistance = 0.4f;
     public LayerMask groundMask;
 
+    public static PlayerMovement instance;
 
     Vector3 velocity;
-    bool isGrounded;
+    public bool isGrounded,ImmobilizedOrDead;
 
     public _PlayerMovement movementScript;
 
     private void Start()
     {
+        if (instance == null) { instance = this; }
+        Spawn();
         movementScript = new _PlayerMovement();
         movementScript.Enable();
         movementScript.Move.Movement.started += ctx => { MoveStarted(); };
@@ -40,7 +43,7 @@ public class PlayerMovement : MonoBehaviour
     }
     void FixedUpdate()
     {
-        Move(movementScript.Move.Movement.ReadValue<Vector2>());
+       if(!ImmobilizedOrDead) Move(movementScript.Move.Movement.ReadValue<Vector2>());
         #region Gravity
         isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);//Check Grounded
         if (isGrounded && velocity.y < 0)
@@ -60,16 +63,14 @@ public class PlayerMovement : MonoBehaviour
     void Move(Vector2 Input)
     {
         Vector3 move = transform.right * Input.x + transform.forward * Input.y;
-        if (!is_Running)
+        if (is_Running)
         {
-            Controller.Move(move * normalSpeed * Time.deltaTime);//Movement
+            Controller.Move(move * spritSpeed * Time.deltaTime);
         }
         else
         {
-            Controller.Move(move * spritSpeed * Time.deltaTime);
-
+            Controller.Move(move * normalSpeed * Time.deltaTime);//Movement
         }
-
     }
 
     void Jump()
@@ -90,32 +91,58 @@ public class PlayerMovement : MonoBehaviour
 
     void MoveStarted()
     {
-        if (is_Running)
+        if (!ImmobilizedOrDead)
         {
-            animator.SetBool("IsRunning", true);
-            MouseAudio.clip = Running_Sound;
-            MouseAudio.Play();
-        }
-        else
-        {
-            animator.SetBool("IsMoving", true);
-            MouseAudio.clip = Walking_Sound;
-            MouseAudio.Play();
+            if (is_Running)
+            {
+                animator.SetBool("IsRunning", true);
+                MouseAudio.clip = Running_Sound;
+                MouseAudio.Play();
+            }
+            else
+            {
+                animator.SetBool("IsMoving", true);
+                MouseAudio.clip = Walking_Sound;
+                MouseAudio.Play();
+            }
         }
     }
 
     void MoveEnded()
     {
-        if (!is_Running)
+        if (!ImmobilizedOrDead)
         {
-            animator.SetBool("IsMoving", false);
+            if (!is_Running)
+            {
+                animator.SetBool("IsMoving", false);
+            }
+            animator.SetBool("IsRunning", false);
+            MouseAudio.Stop();
         }
-        animator.SetBool("IsRunning", false);
-        MouseAudio.Stop();
     }
 
     void Toggle_Run()
     {
         is_Running = !is_Running;
     }
+
+    public void Spawn()
+    {
+        ImmobilizedOrDead = false;
+        GameObject Spawner = GameObject.FindGameObjectWithTag("PlayerSpawner");
+        Controller.enabled = false;
+        transform.position = Spawner.transform.position;
+        Controller.enabled = true;
+    }
+
+
+    public void Eat()
+    {
+        animator.SetTrigger("IsEating");
+    }
+    public void Die()
+    {
+        animator.SetTrigger("IsDed");
+    }
+
 }

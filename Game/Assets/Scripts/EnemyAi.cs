@@ -1,163 +1,138 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.AI;
-namespace Scripts.Enemy
+using UnityEngine.UIElements;
 
+public class EnemyAi : MonoBehaviour
 {
-    namespace girlHostile
+    Vector3 randomDirection;
+    [Range(0f,50f)]public float WalkRadius;
+    [Range(0f, 5f)] public float StoppingDistance;
+    [Range(0f, 5f)] public float AttackDistance;
+    public NavMeshAgent agent;
+    public bool is_Chasing;
+    public GameObject Rat;
+
+    public Animator animator;
+
+    private bool move;
+
+    Vector3 Destination;
+
+    public static EnemyAi instance;
+
+    private void Awake()
     {
-        public class EnemyAi : MonoBehaviour
+        if (instance == null)
         {
-            [Header("Scripts")]
-           
-
-            [Header("Variables")]
-            [SerializeField,Range(0f, 50f)] private float wanderRadius;
-            [SerializeField,Range(0f, 50f)] private float chase_range,agentstoppingdistance;
-            [SerializeField,Range(0f, 50f)] private float attack_distance;          
-
-
-            [Header("Components")]
-            [SerializeField] public GameObject player; 
-            [SerializeField] public NavMeshAgent agent;
-            [SerializeField] private Animator animator;
-
-            [Header("Booleans")]
-            [SerializeField] private bool cooldown;
-            [SerializeField] private bool ReadyToHit = true;
-            [SerializeField] public bool angry;
-
-            [Header("Markers")]
-           
-            private Vector3 newPos;
-           
-            private void Awake()
-            {
-                agent.stoppingDistance = agentstoppingdistance;
-                //Tracker because gameobject being tracked by navmesh should be grounded
-                agent.destination = player.transform.position;
-                cooldown = false;
-            }
-
-            private void OnEnable()
-            {
-                agent.destination = player.transform.position;
-                cooldown = false;
-                Animations(0, 0);
-                newPos = RandomNavSphere(player.transform.position, wanderRadius, -1);
-            }
-            private void Update()
-            {
-             //   Debug.Log(Vector3.Distance(transform.position, player.transform.position));
-                //if agent is active
-                
-                    //if girl is in chase mode
-                    if (!angry&&agent.enabled)
-                    {
-                        //if girl hasnt just attacked
-                        if (!cooldown)
-                        {
-                            //if player is in front of girl
-                            if (Vector3.Distance(player.transform.position, transform.position) < chase_range)
-                            {
-                                    agent.SetDestination(player.transform.position);
-								//Trigger Chase Animation
-							
-                                    Animations(2, 0);
-                                    Attack();
-                            }
-
-                            //if player is not in front of girl
-                            else 
-                            {
-                                ChangePos();
-                            }
-                        }
-                    }
-					else if(angry)
-					{
-                        //Float Around
-                        Animations(3, 0);
-					}
-                
-            }
-            void ChangePos()
-            {
-			
-                if (Vector3.Distance(transform.position, newPos) < 3)
-                {
-					
-                        Animations(0, 0);
-                     
-
-                    newPos = RandomNavSphere(player.transform.position, wanderRadius, -1);
-                }
-
-                else
-                {
-					
-                        Animations(1, 0);
-                     
-                }
-                agent.SetDestination(newPos);
-            //    Debug.Log(Vector3.Distance(transform.position, newPos));
-            }
-
-            private void Attack()
-            {
-                //if player is too close
-                if (Vector3.Distance(player.transform.position, transform.position) < attack_distance)
-                {
-
-                }
-
-
-            }
-         
-
-            public  Vector3 RandomNavSphere(Vector3 origin, float dist, int layermask)
-            {
-                Vector3 randDirection = Random.insideUnitSphere * dist;
-
-                randDirection += origin;
-
-                NavMeshHit navHit;
-
-                NavMesh.SamplePosition(randDirection, out navHit, 5, layermask);
-               
-                return navHit.position;
-            }
-            /* walk state 0 is idle 
-             * walk state 2 is chasing
-             * walk state 1 is walking 
-             */
-            public void Animations(int walk_state, int hit_state)
-            {
-                animator.SetInteger("Hit_State", hit_state);
-                animator.SetInteger("Walk_State", walk_state);
-            }
-
-         
-
-            void ReActivate()
-            {
-              //  agent.Warp(newPos);
-                cooldown = false;
-                agent.isStopped = false;
-                ReadyToHit = true;
-            }
-
-           
-
-           public void ChangeGirl()
-			{
-                angry = true;
-              //  BoxVolume.SetActive(false);
-                agent.enabled = false;
-			}
-
-           
+            instance = this;
         }
+    }
+    private void Start()
+    {
+        StartCoroutine("StartOff");
+    }
+    private void Update()
+    {
+        if (move)
+        {
+            if (!is_Chasing)
+            {
+                if (Vector3.Distance(transform.position, Destination) < StoppingDistance)
+                {
+                    animator.SetBool("Walk", false);
+                }
+               
+            }
+            else
+            {
+                if (Vector3.Distance(transform.position, Rat.transform.position) < AttackDistance)
+                {
+                    Death(true);
+                   
+                }
+                agent.SetDestination(Rat.transform.position);
+            }
+        }
+    }
+
+    Vector3 ChooseRandomPoint()
+    {
+        Vector3 randomDirection = Random.insideUnitSphere * WalkRadius + transform.position;
+        NavMeshHit hit;
+        NavMesh.SamplePosition(randomDirection, out hit, WalkRadius, 1);
+        Vector3 finalPosition = hit.position;
+        Instantiate(new GameObject("try"), finalPosition, Quaternion.identity);
+        StartCoroutine("ReSearch");
+        return finalPosition;
+    }
+
+    IEnumerator ReSearch()
+    {
+        yield return new WaitForSeconds(5);
+        Destination = ChooseRandomPoint();
+        agent.SetDestination(Destination);
+        animator.SetBool("Walk", true);
+    }
+    IEnumerator StartOff()
+    {
+        yield return new WaitForSeconds(10);
+        Destination = ChooseRandomPoint();
+        agent.enabled = true;
+        agent.SetDestination(Destination);
+        animator.SetBool("Walk", true);
+        move = true;
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if(other.gameObject.tag == "Player" && move)
+        {
+            is_Chasing = true;
+        }
+    }
+
+    public void Death(bool killedOrTimeOut)
+    {
+       
+        if (killedOrTimeOut == true)
+        {
+            StartCoroutine("OnDeath",true);
+        }
+        else
+        {
+            StartCoroutine("OnDeath", false);
+        }
+    }
+
+    IEnumerator OnDeath(bool death)
+    {
+        move = false;
+        agent.enabled = false;
+        PlayerMovement.instance.ImmobilizedOrDead = true;
+        if (death)
+        {
+            animator.SetTrigger("Kill");
+            yield return new WaitForSeconds(0.5f);
+            PlayerMovement.instance.Die();
+            yield return new WaitForSeconds(2.5f);
+        }
+        else
+        {
+            yield return new WaitForSeconds(0f);
+        }
+        GameManager.instance.ResetTimer();
+        is_Chasing = false;
+        GameManager.instance.LivesLeft--;
+        PlayerMovement.instance.Spawn();
+
+        //Reset Cat
+        Destination = ChooseRandomPoint();
+        agent.enabled = true;
+        agent.SetDestination(Destination);
+        animator.SetBool("Walk", true);
+        move = true;
     }
 }
