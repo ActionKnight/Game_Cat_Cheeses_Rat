@@ -20,6 +20,7 @@ public class GameManager : MonoBehaviour
 
     bool TimerOn;
     float TimeLeft;
+    bool MenuSceneLoaded;
 
     public TextMeshProUGUI TimerText,CheeseCounterText,HeartText;
     private void Awake()
@@ -42,12 +43,14 @@ public class GameManager : MonoBehaviour
             TotalCheesesInScene = Spawners.Length;
             SpawnNew();
             ResetTimer();
+            MenuSceneLoaded = false;
         }
         else
         {
             GlobalCanvas.SetActive(false);
             ResetTimer();
             TimerOn = false;
+            MenuSceneLoaded = true;
         }
     }
 
@@ -74,7 +77,7 @@ public class GameManager : MonoBehaviour
     {
         if (LivesLeft == 0)
         {
-            StartCoroutine("OnDeathReturn");
+           if(!MenuSceneLoaded) StartCoroutine("OnDeathReturn");
             
         }
         if (TimerOn)
@@ -104,7 +107,7 @@ public class GameManager : MonoBehaviour
     {
         yield return new WaitForSeconds(2.5f);
         LivesLeft = 3;
-        SceneManager.LoadScene(1);
+        if (!MenuSceneLoaded) SceneManager.LoadScene(1);
     }
 
     public void ResetGame()
@@ -112,7 +115,7 @@ public class GameManager : MonoBehaviour
         Time.timeScale = 1;
         ResetTimer();
         TimerOn = false;
-        SceneManager.LoadScene(1);
+         SceneManager.LoadScene(1);
     }
 
 }
