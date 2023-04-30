@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
-using UnityEditor.PackageManager;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -66,6 +65,7 @@ public class GameManager : MonoBehaviour
             else if (SceneManager.GetActiveScene().buildIndex == 3)
             {
                 WinPanel.SetActive(true);
+                Cursor.lockState = CursorLockMode.None;
                 Time.timeScale = 0;
             }
         }
